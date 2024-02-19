@@ -59,16 +59,22 @@ jobs:
               name: 'sdist'
             }
           - { 
-             os: macos-latest,
+             os: macos-12,
              arch: x64,
              python-ver: '3.8',
              name: 'macos_x86_64'
+            }
+          - {
+              os: macos-14,
+              arch: aarch64,
+              python-ver: '3.10',
+              name: 'macos_aarch64'
             }
     steps:
     - uses: actions/checkout@v2
 
     - name: '🛠️ Set up Python'
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.config.python-ver }}
 
@@ -96,7 +102,12 @@ jobs:
       run: |
         choco install ninja cmake
 
-    - name: '🛠️ Install dependencies'
+    - name: '🛠️ macOS dependencies'
+      if: contains(matrix.config.name, 'macos')
+      run: |
+        brew install p7zip cmake ninja pkg-config
+
+    - name: '🛠️ pip dependencies'
       run: |
         pip install setuptools wheel
 

@@ -8,6 +8,7 @@ import subprocess
 import shutil
 import sys
 import platform
+import setuptools
 
 from distutils import log
 from distutils.core import setup
@@ -29,7 +30,7 @@ SRC_DIR = os.path.join(ROOT_DIR, 'src')
 UC_DIR = SRC_DIR if os.path.exists(SRC_DIR) else os.path.join(ROOT_DIR, '../..')
 BUILD_DIR = os.path.join(UC_DIR, 'build_python')
 
-VERSION = "2.0.1.post1"
+VERSION = "2.0.2"
 
 if SYSTEM == 'darwin':
     LIBRARY_FILE = "libunicorn.2.dylib"
@@ -72,7 +73,7 @@ def copy_sources():
 
     src.extend(glob.glob(os.path.join(ROOT_DIR, "../../*.[ch]")))
     src.extend(glob.glob(os.path.join(ROOT_DIR, "../../*.mk")))
-    src.extend(glob.glob(os.path.join(ROOT_DIR, "../../*.cmake")))
+    src.extend(glob.glob(os.path.join(ROOT_DIR, "../../cmake/*.cmake")))
 
     src.extend(glob.glob(os.path.join(ROOT_DIR, "../../LICENSE*")))
     src.extend(glob.glob(os.path.join(ROOT_DIR, "../../README.md")))

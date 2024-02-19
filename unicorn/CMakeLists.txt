@@ -17,6 +17,11 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
     cmake_policy(SET CMP0092 NEW)
 endif()
 
+option(ZIG_BUILD "Enable zig build" OFF)
+if(ZIG_BUILD)
+    include(cmake/zig.cmake)
+endif()
+
 # Workaround to fix wrong compiler on macos.
 if(APPLE AND NOT CMAKE_C_COMPILER)
     set(CMAKE_C_COMPILER "/usr/bin/cc")
@@ -45,9 +50,9 @@ set(CMAKE_C_STANDARD 11)
 
 set(UNICORN_VERSION_MAJOR 2)
 set(UNICORN_VERSION_MINOR 0)
-set(UNICORN_VERSION_PATCH 1)
+set(UNICORN_VERSION_PATCH 2)
 
-include(bundle_static.cmake)
+include(cmake/bundle_static.cmake)
 
 # Even though we generate shared lib and static archive at the same time, we still support
 # using unicorn as a subdirectory so we have to respect BUILD_SHARED_LIBS.
@@ -84,6 +89,9 @@ include_directories(
     qemu/tcg
 )
 
+# Some distributions on some rare architecures don't auto link atomic for us and
+# we do this manually by adding flags.
+set(ATOMIC_LINKAGE_FIX FALSE)
 if(MSVC)
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(MSVC_FLAG  -D__x86_64__)
@@ -186,6 +194,7 @@ else()
             string(FIND "${UC_COMPILER_MACRO}" "__arm__" UC_RET)
             if(${UC_RET} GREATER_EQUAL "0")
                 set(UNICORN_TARGET_ARCH "arm")
+                set(ATOMIC_LINKAGE_FIX TRUE)
                 break()
             endif()
             string(FIND "${UC_COMPILER_MACRO}" "__aarch64__" UC_RET)
@@ -196,11 +205,13 @@ else()
             string(FIND "${UC_COMPILER_MACRO}" "__mips__" UC_RET)
             if(${UC_RET} GREATER_EQUAL "0")
                 set(UNICORN_TARGET_ARCH "mips")
+                set(ATOMIC_LINKAGE_FIX TRUE)
                 break()
             endif()
             string(FIND "${UC_COMPILER_MACRO}" "__sparc__" UC_RET)
             if(${UC_RET} GREATER_EQUAL "0")
                 set(UNICORN_TARGET_ARCH "sparc")
+                set(ATOMIC_LINKAGE_FIX TRUE)
                 break()
             endif()
             string(FIND "${UC_COMPILER_MACRO}" "__ia64__" UC_RET)
@@ -211,16 +222,19 @@ else()
             string(FIND "${UC_COMPILER_MACRO}" "_ARCH_PPC" UC_RET)
             if(${UC_RET} GREATER_EQUAL "0")
                 set(UNICORN_TARGET_ARCH "ppc")
+                set(ATOMIC_LINKAGE_FIX TRUE)
                 break()
             endif()
             string(FIND "${UC_COMPILER_MACRO}" "__riscv" UC_RET)
             if(${UC_RET} GREATER_EQUAL "0")
                 set(UNICORN_TARGET_ARCH "riscv")
+                set(ATOMIC_LINKAGE_FIX TRUE)
                 break()
             endif()
             string(FIND "${UC_COMPILER_MACRO}" "__s390__" UC_RET)
             if(${UC_RET} GREATER_EQUAL "0")
                 set(UNICORN_TARGET_ARCH "s390")
+                set(ATOMIC_LINKAGE_FIX TRUE)
                 break()
             endif()
             string(FIND ${UC_COMPILER_MACRO} "__tricore__" UC_RET)
@@ -274,6 +288,9 @@ else()
     endif()
     if(UNICORN_TRACER)
         set (EXTRA_CFLAGS "${EXTRA_CFLAGS} -DUNICORN_TRACER")
+    endif()
+    if (ATOMIC_LINKAGE_FIX)
+        set (EXTRA_CFLAGS "${EXTRA_CFLAGS} -latomic")
     endif()
 
     set(TARGET_LIST "--target-list=")
@@ -413,6 +430,11 @@ else()
         -Wall
         -fPIC
     )
+    if (ATOMIC_LINKAGE_FIX)
+        add_compile_options(
+            -latomic
+        )
+    endif()
     if(APPLE)
         # This warning is disabled by default for gcc and doesn't cause any bug.
         add_compile_options(
@@ -446,6 +468,8 @@ set(UNICORN_ARCH_COMMON
     qemu/accel/tcg/tcg-runtime-gvec.c
     qemu/accel/tcg/translate-all.c
     qemu/accel/tcg/translator.c
+
+    qemu/softmmu/unicorn_vtlb.c
 )
 
 if(UNICORN_HAS_X86)
@@ -1185,10 +1209,13 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 set(UNICORN_LINK_LIBRARIES ${UNICORN_LINK_LIBRARIES} unicorn-common)
+if (ATOMIC_LINKAGE_FIX)
+    set(UNICORN_COMPILE_OPTIONS ${UNICORN_COMPILE_OPTIONS} -latomic)
+endif()
 if(UNICORN_HAS_X86)
     set(UNICORN_COMPILE_OPTIONS ${UNICORN_COMPILE_OPTIONS} -DUNICORN_HAS_X86)
     set(UNICORN_LINK_LIBRARIES ${UNICORN_LINK_LIBRARIES} x86_64-softmmu)
-    set(UNICORN_SAMPLE_FILE ${UNICORN_SAMPLE_FILE} sample_x86 sample_x86_32_gdt_and_seg_regs sample_batch_reg mem_apis shellcode)
+    set(UNICORN_SAMPLE_FILE ${UNICORN_SAMPLE_FILE} sample_x86 sample_x86_32_gdt_and_seg_regs sample_batch_reg mem_apis shellcode sample_mmu)
     target_link_libraries(x86_64-softmmu PRIVATE unicorn-common)
     set(UNICORN_TEST_FILE ${UNICORN_TEST_FILE} test_x86)
 endif()
@@ -1291,7 +1318,7 @@ if(MINGW)
     set(UNICORN_LINK_LIBRARIES ${UNICORN_LINK_LIBRARIES} pthread)
 endif()
 
-if(UNICORN_TARGET_ARCH STREQUAL "riscv")
+if(ATOMIC_LINKAGE_FIX)
     set(UNICORN_LINK_LIBRARIES ${UNICORN_LINK_LIBRARIES} atomic)
 endif()
 
@@ -1354,6 +1381,13 @@ elseif(NOT ANDROID_ABI)
 else()
     set(SAMPLES_LIB
         unicorn
+    )
+endif()
+
+if(ATOMIC_LINKAGE_FIX)
+    set(SAMPLES_LIB
+        ${SAMPLES_LIB}
+        atomic
     )
 endif()
 
@@ -1443,13 +1477,18 @@ if(UNICORN_INSTALL AND NOT MSVC)
     endif()
     install(FILES $<TARGET_FILE:unicorn_archive> DESTINATION ${CMAKE_INSTALL_LIBDIR})
     install(FILES ${UNICORN_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/unicorn)
+    if (ATOMIC_LINKAGE_FIX)
+        set(ATOMIC_LINK_PKG_CONFIG " -latomic")
+    else()
+        set(ATOMIC_LINK_PKG_CONFIG "")
+    endif()
     file(WRITE ${CMAKE_BINARY_DIR}/unicorn.pc "Name: unicorn\n\
 Description: Unicorn emulator engine\n\
 Version: ${UNICORN_VERSION_MAJOR}.${UNICORN_VERSION_MINOR}.${UNICORN_VERSION_PATCH}\n\
 libdir=${CMAKE_INSTALL_FULL_LIBDIR}\n\
 includedir=${CMAKE_INSTALL_FULL_INCLUDEDIR}\n\
 Libs: -L\$\{libdir\} -lunicorn\n\
-Libs.private: -lpthread -lm\n\
+Libs.private: -lpthread -lm${ATOMIC_LINK_PKG_CONFIG}\n\
 Cflags: -I\$\{includedir\}\n"
     )
     install(FILES ${CMAKE_BINARY_DIR}/unicorn.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
