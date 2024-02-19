@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
@@ -109,7 +109,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../unicorn/include/;../Blackbone/src/;../capstone/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../unicorn/include/;../Blackbone/src/;../capstone/include/;../Blackbone/src/3rd_party</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -117,7 +117,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\Blackbone\build\x64\Debug;..\capstone\msvc\x64\Debug;..\x64\Debug;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\Blackbone\build\x64\Debug;..\capstone\msvc\x64\Debug;..\x64\Debug;..\unicorn\build\lib64\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>unicorn_static.lib;x86_64-softmmu.lib;unicorn-common.lib;BlackBone.lib;capstone.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -149,9 +149,9 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../unicorn/include/;../Blackbone/src/;../capstone/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../unicorn/include/;../Blackbone/src/;../capstone/include/;../Blackbone/src/3rd_party</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <Optimization>MaxSpeed</Optimization>
     </ClCompile>
     <Link>
@@ -159,8 +159,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\unicorn\msvc\x64\Release;..\capstone\msvc\x64\Release;..\x64\Release;..\build\x64\Release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>unicorn_static.lib;BlackBone.lib;capstone.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\unicorn\msvc\x64\Release;..\capstone\msvc\x64\Release;..\x64\Release;..\build\x64\Release;..\unicorn\build\lib64\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>unicorn_static.lib;unicorn-common.lib;x86_64-softmmu.lib;BlackBone.lib;capstone.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
